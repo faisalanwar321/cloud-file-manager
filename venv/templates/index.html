@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cloud File Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --accent: #00ff88;
+      --accent2: #00cfff;
+      --text: #f0f0f0;
+      --muted: #666;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    /* Upload Box */
+    .upload-box {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      background: var(--surface);
+      transition: border-color 0.3s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .upload-box:hover, .upload-box.dragover {
+      border-color: var(--accent);
+    }
+
+    .upload-box input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .upload-box h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+    .upload-box p {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 28px;
+      background: var(--accent);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Progress */
+    #progress-wrap {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .progress-bar-bg {
+      background: var(--border);
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width 0.3s;
+    }
+
+    #status-msg {
+      font-size: 0.78rem;
+      margin-top: 8px;
+      color: var(--accent);
+      text-align: left;
+    }
+
+    /* File List */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 40px 0 16px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    #file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.2s;
+    }
+
+    .file-card:hover { border-color: var(--accent2); }
+
+    .file-icon { font-size: 1.6rem; flex-shrink: 0; }
+
+    .file-info { flex: 1; overflow: hidden; }
+
+    .file-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-url {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      transition: opacity 0.2s;
+    }
+
+    .btn-download { background: var(--accent2); color: #000; }
+    .btn-delete { background: transparent; color: #ff4d4d; border: 1px solid #ff4d4d; }
+    .btn-sm:hover { opacity: 0.8; }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 32px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--accent);
+      color: #000;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>☁ Cloud File Manager</h1>
+      <p>Upload, kelola, dan bagikan file kamu ke cloud</p>
+    </header>
+
+    <div class="upload-box" id="drop-zone">
+        <div class="upload-icon">📂</div>
+        <h2>Drag & drop file di sini</h2>
+        <p>atau klik untuk memilih file</p>
+        <button class="btn" id="select-btn" type="button">📁 Pilih File</button>
+        <input type="file" id="file-input" multiple style="display:none" />
+        <button class="btn" id="upload-btn" type="button" style="background:#00cfff; margin-left:8px;">⬆ Upload File</button>
+    </div>
+
+    <div id="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div id="status-msg">Mengupload...</div>
+    </div>
+
+    <div class="section-title">File tersimpan</div>
+    <div id="file-list"><div class="empty-state">Memuat file...</div></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  const fileInput = document.getElementById('file-input');
+  const selectBtn = document.getElementById('select-btn');
+  const uploadBtn = document.getElementById('upload-btn');
+  const dropZone = document.getElementById('drop-zone');
+
+  // Tombol pilih file
+  selectBtn.addEventListener('click', () => fileInput.click());
+
+  // Tombol upload
+  uploadBtn.addEventListener('click', uploadFile);
+
+  // Drag & drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    fileInput.files = e.dataTransfer.files;
+    showToast(`${e.dataTransfer.files.length} file dipilih`);
+  });
+
+  // Preview nama file terpilih
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      showToast(`${fileInput.files.length} file dipilih`);
+    }
+  });
+
+  function getFileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return '🖼️';
+    if (['mp4','mov','avi','mkv'].includes(ext)) return '🎬';
+    if (['mp3','wav','ogg'].includes(ext)) return '🎵';
+    if (['pdf'].includes(ext)) return '📄';
+    if (['zip','rar','7z'].includes(ext)) return '🗜️';
+    if (['doc','docx'].includes(ext)) return '📝';
+    if (['xls','xlsx'].includes(ext)) return '📊';
+    return '📁';
+  }
+
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#ff4d4d' : 'var(--accent)';
+    t.style.color = isError ? '#fff' : '#000';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  async function loadFiles() {
+    const res = await fetch('/files');
+    const files = await res.json();
+    const list = document.getElementById('file-list');
+    if (!files.length) {
+      list.innerHTML = '<div class="empty-state">Belum ada file yang diupload.</div>';
+      return;
+    }
+    list.innerHTML = files.map(f => `
+      <div class="file-card">
+        <div class="file-icon">${getFileIcon(f.name)}</div>
+        <div class="file-info">
+          <div class="file-name">${f.name}</div>
+          <div class="file-url">${f.url}</div>
+        </div>
+        <div class="file-actions">
+          <a href="${f.url}" target="_blank">
+            <button class="btn-sm btn-download">⬇ Unduh</button>
+          </a>
+          <button class="btn-sm btn-delete" onclick="deleteFile('${f.name}')">🗑 Hapus</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function uploadFile() {
+    if (!fileInput.files.length) {
+      showToast('Pilih file dulu!', true);
+      return;
+    }
+
+    const progressWrap = document.getElementById('progress-wrap');
+    const fill = document.getElementById('progress-fill');
+    const statusMsg = document.getElementById('status-msg');
+
+    progressWrap.style.display = 'block';
+    uploadBtn.disabled = true;
+
+    for (let i = 0; i < fileInput.files.length; i++) {
+      const file = fileInput.files[i];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      statusMsg.textContent = `Mengupload: ${file.name}`;
+      fill.style.width = '30%';
+
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        fill.style.width = `${((i + 1) / fileInput.files.length) * 100}%`;
+        if (data.error) showToast(data.error, true);
+        else showToast(`✅ ${file.name} berhasil diupload!`);
+      } catch (err) {
+        showToast('Upload gagal! Cek terminal.', true);
+        console.error(err);
+      }
+    }
+
+    statusMsg.textContent = 'Selesai!';
+    uploadBtn.disabled = false;
+    fileInput.value = '';
+    setTimeout(() => { progressWrap.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+    loadFiles();
+  }
+
+  async function deleteFile(filename) {
+    if (!confirm(`Hapus file "${filename}"?`)) return;
+    const res = await fetch(`/delete/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const data = await res.json();
+    showToast(data.message);
+    loadFiles();
+  }
+
+  loadFiles();
+</script>
+</body>
+</html>
