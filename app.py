@@ -14,6 +14,12 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'txt', 'xlsx'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -27,19 +33,24 @@ def upload_file():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    # Buat nama unik supaya tidak bentrok
+    # Validasi tipe file
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Tipe file tidak diizinkan!"}), 400
+
+    # Validasi ukuran file
+    file_bytes = file.read()
+    if len(file_bytes) > MAX_FILE_SIZE:
+        return jsonify({"error": "Ukuran file melebihi batas 10MB!"}), 400
+
     ext = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{ext}"
-    file_bytes = file.read()
 
-    # Upload ke Supabase Storage
     supabase.storage.from_(SUPABASE_BUCKET).upload(
         path=unique_filename,
         file=file_bytes,
         file_options={"content-type": file.content_type}
     )
 
-    # Ambil public URL
     public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(unique_filename)
 
     return jsonify({
