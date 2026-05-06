@@ -53,6 +53,12 @@ def upload_file():
 
     public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(unique_filename)
 
+    supabase.table("file_metadata").insert({
+        "original_name": file.filename,
+        "stored_name": unique_filename,
+        "url": public_url
+    }).execute()
+    
     return jsonify({
         "message": "Upload berhasil!",
         "filename": file.filename,
@@ -61,17 +67,23 @@ def upload_file():
 
 @app.route("/files", methods=["GET"])
 def list_files():
-    response = supabase.storage.from_(SUPABASE_BUCKET).list()
+    response = supabase.table("file_metadata").select("*").order("uploaded_at", desc=True).execute()
     files = []
-    for f in response:
-        name = f["name"]
-        url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(name)
-        files.append({"name": name, "url": url})
+    for f in response.data:
+        files.append({
+            "name": f["original_name"],
+            "stored_name": f["stored_name"],
+            "url": f["url"],
+            "uploaded_at": f["uploaded_at"]
+        })
     return jsonify(files)
 
-@app.route("/delete/<filename>", methods=["DELETE"])
-def delete_file(filename):
+@app.route("/delete/<filename>/<int:file_id>", methods=["DELETE"])
+def delete_file(filename, file_id):
+    # Hapus dari storage
     supabase.storage.from_(SUPABASE_BUCKET).remove([filename])
+    # Hapus metadata dari database
+    supabase.table("file_metadata").delete().eq("id", file_id).execute()
     return jsonify({"message": f"{filename} berhasil dihapus"})
 
 if __name__ == "__main__":
