@@ -98,7 +98,7 @@
       margin-top: 20px;
       padding: 12px 28px;
       background: var(--accent);
-      color: #000;
+      color: #000000;
       font-family: 'Space Mono', monospace;
       font-weight: 700;
       font-size: 0.85rem;
@@ -321,20 +321,21 @@
       return;
     }
     list.innerHTML = files.map(f => `
-      <div class="file-card">
-        <div class="file-icon">${getFileIcon(f.name)}</div>
-        <div class="file-info">
-          <div class="file-name">${f.name}</div>
-          <div class="file-url">${f.url}</div>
-        </div>
-        <div class="file-actions">
-          <a href="${f.url}" target="_blank">
-            <button class="btn-sm btn-download">⬇ Unduh</button>
-          </a>
-          <button class="btn-sm btn-delete" onclick="deleteFile('${f.name}')">🗑 Hapus</button>
-        </div>
-      </div>
-    `).join('');
+  <div class="file-card">
+    <div class="file-icon">${getFileIcon(f.name)}</div>
+    <div class="file-info">
+      <div class="file-name">${f.name}</div>
+      <div class="file-url">${f.url}</div>
+      <div class="file-url">📅 ${new Date(f.uploaded_at).toLocaleString('id-ID')}</div>
+    </div>
+    <div class="file-actions">
+      <a href="${f.url}" target="_blank">
+        <button class="btn-sm btn-download">⬇ Unduh</button>
+      </a>
+      <button class="btn-sm btn-delete" onclick="deleteFile('${f.stored_name}', ${f.id})">🗑 Hapus</button>
+    </div>
+  </div>
+`).join('');
   }
 
   async function uploadFile() {
