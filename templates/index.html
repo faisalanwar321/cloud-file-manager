@@ -378,9 +378,9 @@
     loadFiles();
   }
 
-  async function deleteFile(filename) {
+  async function deleteFile(filename, fileId) {
     if (!confirm(`Hapus file "${filename}"?`)) return;
-    const res = await fetch(`/delete/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const res = await fetch(`/delete/${encodeURIComponent(filename)}/${fileId}`, { method: 'DELETE' });
     const data = await res.json();
     showToast(data.message);
     loadFiles();
