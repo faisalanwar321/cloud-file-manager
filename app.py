@@ -71,6 +71,7 @@ def list_files():
     files = []
     for f in response.data:
         files.append({
+            "id": f["id"],
             "name": f["original_name"],
             "stored_name": f["stored_name"],
             "url": f["url"],
