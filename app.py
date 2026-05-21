@@ -121,7 +121,8 @@ def list_files():
             "name": f["original_name"],
             "stored_name": f["stored_name"],
             "url": f["url"],
-            "uploaded_at": f["uploaded_at"]
+            "uploaded_at": f["uploaded_at"],
+            "is_private": f.get("is_private", False)
         })
     return jsonify(files)
 
