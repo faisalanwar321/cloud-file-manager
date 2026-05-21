@@ -65,6 +65,52 @@ def upload_file():
         "url": public_url
     })
 
+@app.route("/upload-private", methods=["POST"])
+def upload_private_file():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Tipe file tidak diizinkan!"}), 400
+
+    file_bytes = file.read()
+    if len(file_bytes) > MAX_FILE_SIZE:
+        return jsonify({"error": "Ukuran file melebihi batas 10MB!"}), 400
+
+    ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{ext}"
+
+    # Upload ke bucket PRIVAT
+    supabase.storage.from_("private-uploads").upload(
+        path=unique_filename,
+        file=file_bytes,
+        file_options={"content-type": file.content_type}
+    )
+
+    # Buat signed URL yang berlaku 1 jam
+    signed = supabase.storage.from_("private-uploads").create_signed_url(
+        unique_filename, 3600
+    )
+    signed_url = signed.get("signedURL") or signed.get("signed_url") or ""
+
+    # Simpan metadata dengan tanda is_private = True
+    supabase.table("file_metadata").insert({
+        "original_name": file.filename,
+        "stored_name": unique_filename,
+        "url": signed_url,
+        "is_private": True
+    }).execute()
+
+    return jsonify({
+        "message": "Upload privat berhasil!",
+        "filename": file.filename,
+        "url": signed_url
+    })
+
 @app.route("/files", methods=["GET"])
 def list_files():
     response = supabase.table("file_metadata").select("*").order("uploaded_at", desc=True).execute()
@@ -79,11 +125,10 @@ def list_files():
         })
     return jsonify(files)
 
-@app.route("/delete/<filename>/<int:file_id>", methods=["DELETE"])
-def delete_file(filename, file_id):
-    # Hapus dari storage
-    supabase.storage.from_(SUPABASE_BUCKET).remove([filename])
-    # Hapus metadata dari database
+@app.route("/delete/<filename>/<int:file_id>/<is_private>", methods=["DELETE"])
+def delete_file(filename, file_id, is_private):
+    bucket = "private-uploads" if is_private == "true" else SUPABASE_BUCKET
+    supabase.storage.from_(bucket).remove([filename])
     supabase.table("file_metadata").delete().eq("id", file_id).execute()
     return jsonify({"message": f"{filename} berhasil dihapus"})
 

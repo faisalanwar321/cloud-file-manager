@@ -246,8 +246,10 @@
         <p>atau klik untuk memilih file</p>
         <button class="btn" id="select-btn" type="button">📁 Pilih File</button>
         <input type="file" id="file-input" multiple style="display:none" />
-        <button class="btn" id="upload-btn" type="button" style="background:#00cfff; margin-left:8px;">⬆ Upload File</button>
-    </div>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button class="btn" id="upload-btn" type="button" style="background:#00cfff; margin-top:12px;">⬆ Upload Publik</button>
+          <button class="btn" id="upload-private-btn" type="button" style="background:#a855f7; margin-top:12px;">🔒 Upload Privat</button>
+        </div>
 
     <div id="progress-wrap">
       <div class="progress-bar-bg">
@@ -272,7 +274,8 @@
   selectBtn.addEventListener('click', () => fileInput.click());
 
   // Tombol upload
-  uploadBtn.addEventListener('click', uploadFile);
+  uploadBtn.addEventListener('click', () => uploadFile(false));
+  document.getElementById('upload-private-btn').addEventListener('click', () => uploadFile(true));
 
   // Drag & drop
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -324,7 +327,13 @@
   <div class="file-card">
     <div class="file-icon">${getFileIcon(f.name)}</div>
     <div class="file-info">
-      <div class="file-name">${f.name}</div>
+      <div class="file-name">
+        ${f.name}
+        ${f.is_private 
+          ? '<span style="background:#a855f7;color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:99px;margin-left:8px;">🔒 PRIVAT</span>' 
+          : '<span style="background:#00ff88;color:#000;font-size:0.65rem;padding:2px 8px;border-radius:99px;margin-left:8px;">🌐 PUBLIK</span>'
+        }
+      </div>
       <div class="file-url">${f.url}</div>
       <div class="file-url">📅 ${new Date(f.uploaded_at).toLocaleString('id-ID')}</div>
     </div>
@@ -332,58 +341,60 @@
       <a href="${f.url}" target="_blank">
         <button class="btn-sm btn-download">⬇ Unduh</button>
       </a>
-      <button class="btn-sm btn-delete" onclick="deleteFile('${f.stored_name}', ${f.id})">🗑 Hapus</button>
+      <button class="btn-sm btn-delete" onclick="deleteFile('${f.stored_name}', ${f.id}, ${f.is_private})">🗑 Hapus</button>
     </div>
   </div>
 `).join('');
   }
 
-  async function uploadFile() {
-    if (!fileInput.files.length) {
-      showToast('Pilih file dulu!', true);
-      return;
-    }
-
-    const progressWrap = document.getElementById('progress-wrap');
-    const fill = document.getElementById('progress-fill');
-    const statusMsg = document.getElementById('status-msg');
-
-    progressWrap.style.display = 'block';
-    uploadBtn.disabled = true;
-
-    for (let i = 0; i < fileInput.files.length; i++) {
-      const file = fileInput.files[i];
-      const formData = new FormData();
-      formData.append('file', file);
-
-      statusMsg.textContent = `Mengupload: ${file.name}`;
-      fill.style.width = '30%';
-
-      try {
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        fill.style.width = `${((i + 1) / fileInput.files.length) * 100}%`;
-        if (data.error) showToast(data.error, true);
-        else showToast(`✅ ${file.name} berhasil diupload!`);
-      } catch (err) {
-        showToast('Upload gagal! Cek terminal.', true);
-        console.error(err);
-      }
-    }
-
-    statusMsg.textContent = 'Selesai!';
-    uploadBtn.disabled = false;
-    fileInput.value = '';
-    setTimeout(() => { progressWrap.style.display = 'none'; fill.style.width = '0%'; }, 2000);
-    loadFiles();
+  async function uploadFile(isPrivate = false) {
+  if (!fileInput.files.length) {
+    showToast('Pilih file dulu!', true);
+    return;
   }
 
-  async function deleteFile(filename, fileId) {
-    if (!confirm(`Hapus file "${filename}"?`)) return;
-    const res = await fetch(`/delete/${encodeURIComponent(filename)}/${fileId}`, { method: 'DELETE' });
-    const data = await res.json();
-    showToast(data.message);
-    loadFiles();
+  const progressWrap = document.getElementById('progress-wrap');
+  const fill = document.getElementById('progress-fill');
+  const statusMsg = document.getElementById('status-msg');
+
+  progressWrap.style.display = 'block';
+  uploadBtn.disabled = true;
+
+  const endpoint = isPrivate ? '/upload-private' : '/upload';
+
+  for (let i = 0; i < fileInput.files.length; i++) {
+    const file = fileInput.files[i];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    statusMsg.textContent = `Mengupload ${isPrivate ? '(privat)' : '(publik)'}: ${file.name}`;
+    fill.style.width = '30%';
+
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
+      const data = await res.json();
+      fill.style.width = `${((i + 1) / fileInput.files.length) * 100}%`;
+      if (data.error) showToast(data.error, true);
+      else showToast(`${isPrivate ? '🔒' : '🌐'} ${file.name} berhasil diupload!`);
+    } catch (err) {
+      showToast('Upload gagal! Cek terminal.', true);
+      console.error(err);
+    }
+  }
+
+  statusMsg.textContent = 'Selesai!';
+  uploadBtn.disabled = false;
+  fileInput.value = '';
+  setTimeout(() => { progressWrap.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+  loadFiles();
+  }
+
+  async function deleteFile(filename, fileId, isPrivate) {
+  if (!confirm(`Hapus file "${filename}"?`)) return;
+  const res = await fetch(`/delete/${encodeURIComponent(filename)}/${fileId}/${isPrivate}`, { method: 'DELETE' });
+  const data = await res.json();
+  showToast(data.message);
+  loadFiles();
   }
 
   loadFiles();
